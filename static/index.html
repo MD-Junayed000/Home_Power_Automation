@@ -27,9 +27,9 @@
         window.firebaseApp = app;
 
         // Backend endpoints
-        // API/WS endpoints: pick in order — window.API_BASE (if injected), localStorage override, or same origin.
-        const API_BASE = (window.API_BASE || localStorage.getItem('API_BASE') || window.location.origin).replace(/\/+$/, '');
-        const WS_BASE  = API_BASE.replace(/^http/, 'ws');
+        // API/WS endpoints: hardcoded to Render backend to avoid missing env injection on static hosting.
+        const API_BASE = 'https://home-power-automation.onrender.com';
+        const WS_BASE  = 'wss://home-power-automation.onrender.com';
     </script>
     <style>
         /* Modern Professional Color Palette */
