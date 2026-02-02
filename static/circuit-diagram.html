@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Prepaid Energy Meter - Circuit Diagram</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d0d1f 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(90deg, rgba(0,212,255,0.1) 0%, rgba(147,51,234,0.1) 100%);
+            border-bottom: 1px solid rgba(147,51,234,0.3);
+            position: relative;
+        }
+        
+        .back-button {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #00d4ff, #9333ea);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,212,255,0.3);
+        }
+        
+        .back-button:hover {
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,212,255,0.5);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4ff, #9333ea, #ff006e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #888;
+            font-size: 1.1rem;
+        }
+        
+        .diagram-container {
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+        }
+        
+        .circuit-svg {
+            background: linear-gradient(180deg, #12122a 0%, #0a0a1a 100%);
+            border-radius: 20px;
+            border: 2px solid rgba(147,51,234,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        
+        /* Component Styles */
+        .component-box {
+            fill: #1e1e3f;
+            stroke: #4a4a8a;
+            stroke-width: 2;
+            rx: 8;
+        }
+        
+        .esp32-box {
+            fill: url(#esp32Gradient);
+            stroke: #00d4ff;
+            stroke-width: 3;
+        }
+        
+        .sensor-box {
+            fill: url(#sensorGradient);
+            stroke: #9333ea;
+            stroke-width: 2;
+        }
+        
+        .relay-box {
+            fill: url(#relayGradient);
+            stroke: #ff006e;
+            stroke-width: 2;
+        }
+        
+        .display-box {
+            fill: url(#displayGradient);
+            stroke: #00ff88;
+            stroke-width: 2;
+        }
+        
+        .power-box {
+            fill: url(#powerGradient);
+            stroke: #ffaa00;
+            stroke-width: 2;
+        }
+        
+        .component-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            fill: #ffffff;
+        }
+        
+        .component-subtitle {
+            font-family: 'Outfit', sans-serif;
+            font-size: 11px;
+            fill: #888;
+        }
+        
+        .pin-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            fill: #00d4ff;
+        }
+        
+        .gpio-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            fill: #9333ea;
+        }
+        
+        /* Wire colors */
+        .wire-power {
+            stroke: #ff4444;
+            stroke-width: 3;
+            fill: none;
+        }
+        
+        .wire-ground {
+            stroke: #444;
+            stroke-width: 3;
+            fill: none;
+        }
+        
+        .wire-signal {
+            stroke: #00d4ff;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: none;
+        }
+        
+        .wire-ac {
+            stroke: #ffaa00;
+            stroke-width: 4;
+            fill: none;
+        }
+        
+        .wire-spi {
+            stroke: #00ff88;
+            stroke-width: 2;
+            fill: none;
+        }
+        
+        /* Pin circles */
+        .pin {
+            fill: #2a2a5a;
+            stroke: #00d4ff;
+            stroke-width: 2;
+        }
+        
+        .pin-power {
+            fill: #ff4444;
+            stroke: #ff6666;
+        }
+        
+        .pin-ground {
+            fill: #333;
+            stroke: #666;
+        }
+        
+        /* Bulb */
+        .bulb-glass {
+            fill: url(#bulbGradient);
+            stroke: #ffdd00;
+            stroke-width: 2;
+        }
+        
+        .bulb-base {
+            fill: #555;
+            stroke: #777;
+            stroke-width: 2;
+        }
+        
+        /* Glow effects */
+        .glow-cyan {
+            filter: drop-shadow(0 0 8px rgba(0,212,255,0.6));
+        }
+        
+        .glow-purple {
+            filter: drop-shadow(0 0 8px rgba(147,51,234,0.6));
+        }
+        
+        .glow-yellow {
+            filter: drop-shadow(0 0 10px rgba(255,221,0,0.8));
+        }
+        
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+            padding: 30px;
+            margin: 0 40px 40px;
+            background: rgba(30,30,60,0.5);
+            border-radius: 15px;
+            border: 1px solid rgba(147,51,234,0.2);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-color {
+            width: 40px;
+            height: 6px;
+            border-radius: 3px;
+        }
+        
+        .legend-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        /* Connection table */
+        .connection-table {
+            margin: 0 40px 40px;
+            background: rgba(30,30,60,0.5);
+            border-radius: 15px;
+            border: 1px solid rgba(147,51,234,0.2);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            background: linear-gradient(90deg, rgba(0,212,255,0.2), rgba(147,51,234,0.2));
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .table-header h3 {
+            font-size: 1.3rem;
+            color: #00d4ff;
+        }
+        
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .table-section {
+            background: rgba(20,20,40,0.5);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(100,100,150,0.2);
+        }
+        
+        .table-section h4 {
+            color: #9333ea;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(147,51,234,0.3);
+        }
+        
+        .pin-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(100,100,150,0.1);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+        
+        .pin-row:last-child {
+            border-bottom: none;
+        }
+        
+        .pin-name {
+            color: #00d4ff;
+        }
+        
+        .pin-connection {
+            color: #888;
+        }
+        
+        /* Animated elements */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes flow {
+            0% { stroke-dashoffset: 20; }
+            100% { stroke-dashoffset: 0; }
+        }
+        
+        .animated-wire {
+            stroke-dasharray: 10, 5;
+            animation: flow 1s linear infinite;
+        }
+        
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-button" onclick="window.location.href='index.html'">← Back to Dashboard</button>
+        <h1>⚡ ESP32 Prepaid Energy Meter</h1>
+        <p>Circuit Diagram with ACS712-30A, ZMPT101B, Relay, LCD 16x2 & Buzzer</p>
+    </div>
+    
+    <div class="diagram-container">
+        <svg class="circuit-svg" width="1200" height="900" viewBox="0 0 1200 900">
+            <defs>
+                <!-- Gradients -->
+                <linearGradient id="esp32Gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#1a3a5c"/>
+                    <stop offset="100%" style="stop-color:#0d1f2d"/>
+                </linearGradient>
+                
+                <linearGradient id="sensorGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#2d1f4e"/>
+                    <stop offset="100%" style="stop-color:#1a0f2e"/>
+                </linearGradient>
+                
+                <linearGradient id="relayGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#4e1f3a"/>
+                    <stop offset="100%" style="stop-color:#2e0f1a"/>
+                </linearGradient>
+                
+                <linearGradient id="displayGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#1f4e3a"/>
+                    <stop offset="100%" style="stop-color:#0f2e1a"/>
+                </linearGradient>
+                
+                <linearGradient id="powerGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#4e3a1f"/>
+                    <stop offset="100%" style="stop-color:#2e1a0f"/>
+                </linearGradient>
+                
+                <linearGradient id="bulbGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ffee88"/>
+                    <stop offset="50%" style="stop-color:#ffdd00"/>
+                    <stop offset="100%" style="stop-color:#ffaa00"/>
+                </linearGradient>
+                
+                <!-- Glow filter -->
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            
+            <!-- Background grid -->
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(100,100,150,0.1)" stroke-width="1"/>
+            </pattern>
+            <rect width="100%" height="100%" fill="url(#grid)"/>
+            
+            <!-- ==================== AC MAINS ==================== -->
+            <g transform="translate(50, 50)">
+                <rect class="power-box" x="0" y="0" width="140" height="80" rx="10"/>
+                <text class="component-title" x="70" y="30" text-anchor="middle">AC MAINS</text>
+                <text class="component-subtitle" x="70" y="50" text-anchor="middle">220V / 230V</text>
+                <text class="pin-label" x="20" y="70">L</text>
+                <text class="pin-label" x="110" y="70">N</text>
+                <circle class="pin pin-power" cx="20" cy="80" r="6"/>
+                <circle class="pin" cx="120" cy="80" r="6"/>
+            </g>
+            
+            <!-- ==================== HI-LINK CONVERTER ==================== -->
+            <g transform="translate(50, 180)">
+                <rect class="power-box" x="0" y="0" width="140" height="100" rx="10"/>
+                <text class="component-title" x="70" y="25" text-anchor="middle">HLK-PM01</text>
+                <text class="component-subtitle" x="70" y="45" text-anchor="middle">AC-DC Converter</text>
+                <text class="component-subtitle" x="70" y="60" text-anchor="middle">220V → 5V DC</text>
+                <text class="pin-label" x="15" y="85">AC</text>
+                <text class="pin-label" x="95" y="85">+5V</text>
+                <circle class="pin" cx="25" cy="100" r="6"/>
+                <circle class="pin pin-power" cx="115" cy="100" r="6"/>
+            </g>
+            
+            <!-- Wire from AC to Converter -->
+            <path class="wire-ac" d="M 70 130 L 70 150 L 75 180"/>
+            <path class="wire-ac" d="M 170 130 L 170 150 L 75 150 L 75 180"/>
+            
+            <!-- ==================== ZMPT101B Voltage Sensor ==================== -->
+            <g transform="translate(250, 50)">
+                <rect class="sensor-box" x="0" y="0" width="160" height="120" rx="10"/>
+                <text class="component-title" x="80" y="25" text-anchor="middle">ZMPT101B</text>
+                <text class="component-subtitle" x="80" y="45" text-anchor="middle">Voltage Sensor</text>
+                
+                <!-- Pins -->
+                <text class="pin-label" x="15" y="70">VCC</text>
+                <text class="pin-label" x="15" y="90">GND</text>
+                <text class="pin-label" x="15" y="110">OUT</text>
+                <text class="pin-label" x="115" y="70">L</text>
+                <text class="pin-label" x="115" y="90">N</text>
+                
+                <circle class="pin pin-power" cx="10" cy="65" r="5"/>
+                <circle class="pin pin-ground" cx="10" cy="85" r="5"/>
+                <circle class="pin" cx="10" cy="105" r="5" filter="url(#glow)"/>
+                <circle class="pin" cx="150" cy="65" r="5"/>
+                <circle class="pin" cx="150" cy="85" r="5"/>
+            </g>
+            
+            <!-- Wire from AC to ZMPT101B -->
+            <path class="wire-ac animated-wire" d="M 70 130 L 70 140 L 220 140 L 220 65 L 250 65 L 400 65"/>
+            <path class="wire-ac" d="M 170 130 L 170 135 L 230 135 L 230 85 L 250 85 L 400 85"/>
+            
+            <!-- ==================== ACS712 Current Sensor ==================== -->
+            <g transform="translate(250, 200)">
+                <rect class="sensor-box" x="0" y="0" width="160" height="140" rx="10"/>
+                <text class="component-title" x="80" y="25" text-anchor="middle">ACS712-30A</text>
+                <text class="component-subtitle" x="80" y="45" text-anchor="middle">Current Sensor</text>
+                <text class="component-subtitle" x="80" y="60" text-anchor="middle">66mV/A</text>
+                
+                <!-- Pins -->
+                <text class="pin-label" x="15" y="85">VCC</text>
+                <text class="pin-label" x="15" y="105">GND</text>
+                <text class="pin-label" x="15" y="125">OUT</text>
+                <text class="pin-label" x="115" y="85">IP+</text>
+                <text class="pin-label" x="115" y="105">IP-</text>
+                
+                <circle class="pin pin-power" cx="10" cy="80" r="5"/>
+                <circle class="pin pin-ground" cx="10" cy="100" r="5"/>
+                <circle class="pin" cx="10" cy="120" r="5" filter="url(#glow)"/>
+                <circle class="pin" cx="150" cy="80" r="5"/>
+                <circle class="pin" cx="150" cy="100" r="5"/>
+            </g>
+            
+            <!-- ==================== RELAY MODULE ==================== -->
+            <g transform="translate(500, 200)">
+                <rect class="relay-box" x="0" y="0" width="160" height="140" rx="10"/>
+                <text class="component-title" x="80" y="25" text-anchor="middle">RELAY MODULE</text>
+                <text class="component-subtitle" x="80" y="45" text-anchor="middle">1-Channel 5V</text>
+                
+                <!-- Control side -->
+                <text class="pin-label" x="15" y="70">VCC</text>
+                <text class="pin-label" x="15" y="90">GND</text>
+                <text class="pin-label" x="15" y="110">IN</text>
+                
+                <!-- Load side -->
+                <text class="pin-label" x="110" y="70">COM</text>
+                <text class="pin-label" x="110" y="90">NO</text>
+                <text class="pin-label" x="110" y="110">NC</text>
+                
+                <circle class="pin pin-power" cx="10" cy="65" r="5"/>
+                <circle class="pin pin-ground" cx="10" cy="85" r="5"/>
+                <circle class="pin" cx="10" cy="105" r="5"/>
+                <circle class="pin" cx="150" cy="65" r="5"/>
+                <circle class="pin" cx="150" cy="85" r="5"/>
+                <circle class="pin pin-ground" cx="150" cy="105" r="5"/>
+                
+                <!-- Relay symbol -->
+                <rect x="55" y="115" width="50" height="20" fill="none" stroke="#ff006e" stroke-width="2" rx="3"/>
+                <line x1="60" y1="125" x2="100" y2="125" stroke="#ff006e" stroke-width="2"/>
+                
+                <!-- Note about NC connection -->
+                <text x="80" y="155" text-anchor="middle" fill="#ff006e" style="font-size:9px; font-weight:bold;">⭐ Using NC (Active)</text>
+            </g>
+            
+            <!-- Wire from AC Line to ACS712 IP+ -->
+            <path class="wire-ac animated-wire" d="M 70 130 L 70 145 L 430 145 L 430 280 L 410 280"/>
+            
+            <!-- Wire from ACS712 IP- to Relay COM -->
+            <path class="wire-ac" d="M 410 300 L 430 300 L 430 265 L 650 265"/>
+            
+            <!-- ==================== BULB (LOAD) ==================== -->
+            <g transform="translate(720, 180)" class="glow-yellow pulse">
+                <rect class="power-box" x="0" y="0" width="120" height="160" rx="10"/>
+                <text class="component-title" x="60" y="25" text-anchor="middle">LOAD</text>
+                
+                <!-- Bulb illustration -->
+                <ellipse class="bulb-glass" cx="60" cy="80" rx="35" ry="45"/>
+                <rect class="bulb-base" x="45" y="120" width="30" height="25" rx="3"/>
+                
+                <!-- Filament -->
+                <path d="M 50 75 Q 55 65 60 75 Q 65 85 70 75" stroke="#ff6600" stroke-width="2" fill="none"/>
+                
+                <text class="component-subtitle" x="60" y="155" text-anchor="middle">AC Bulb 💡</text>
+            </g>
+            
+            <!-- Wire from Relay NC to Bulb -->
+            <path class="wire-ac" d="M 650 305 L 680 305 L 680 220 L 720 220"/>
+            
+            <!-- Wire from Bulb to Neutral -->
+            <path class="wire-ac" d="M 840 260 L 880 260 L 880 400 L 200 400 L 200 130 L 170 130"/>
+            
+            <!-- ==================== ESP32 DEVKIT ==================== -->
+            <g transform="translate(450, 450)">
+                <rect class="esp32-box" x="0" y="0" width="300" height="380" rx="15"/>
+                <text class="component-title" x="150" y="30" text-anchor="middle" style="font-size:18px;">ESP32 DEVKIT V1</text>
+                <text class="component-subtitle" x="150" y="50" text-anchor="middle">Main Controller</text>
+                
+                <!-- USB port illustration -->
+                <rect x="120" y="350" width="60" height="25" fill="#333" stroke="#555" stroke-width="2" rx="3"/>
+                <text class="component-subtitle" x="150" y="368" text-anchor="middle" style="font-size:9px;">MICRO USB</text>
+                
+                <!-- Left side pins -->
+                <g transform="translate(15, 70)">
+                    <text class="pin-label" x="0" y="0">3V3</text>
+                    <circle class="pin pin-power" cx="-10" cy="-5" r="4"/>
+                    
+                    <text class="pin-label" x="0" y="25">GND</text>
+                    <circle class="pin pin-ground" cx="-10" cy="20" r="4"/>
+                    
+                    <text class="pin-label" x="0" y="50">GPIO 34</text>
+                    <circle class="pin" cx="-10" cy="45" r="4"/>
+                    <text class="gpio-label" x="55" y="50">(ADC - Voltage)</text>
+                    
+                    <text class="pin-label" x="0" y="75">GPIO 35</text>
+                    <circle class="pin" cx="-10" cy="70" r="4"/>
+                    <text class="gpio-label" x="55" y="75">(ADC - Current)</text>
+                    
+                    <text class="pin-label" x="0" y="100">GPIO 26</text>
+                    <circle class="pin" cx="-10" cy="95" r="4"/>
+                    <text class="gpio-label" x="55" y="100">(Relay Control)</text>
+                    
+                    <text class="pin-label" x="0" y="125">GPIO 27</text>
+                    <circle class="pin" cx="-10" cy="120" r="4"/>
+                    <text class="gpio-label" x="55" y="125">(Buzzer)</text>
+                </g>
+                
+                <!-- Right side pins (SPI for TFT) -->
+                <g transform="translate(165, 70)">
+                    <text class="pin-label" x="0" y="0">5V / VIN</text>
+                    <circle class="pin pin-power" cx="120" cy="-5" r="4"/>
+                    
+                    <text class="pin-label" x="0" y="25">GND</text>
+                    <circle class="pin pin-ground" cx="120" cy="20" r="4"/>
+                    
+                    <text class="pin-label" x="0" y="50">GPIO 21</text>
+                    <circle class="pin" cx="120" cy="45" r="4"/>
+                    <text class="gpio-label" x="55" y="50">(SDA - LCD)</text>
+                    
+                    <text class="pin-label" x="0" y="75">GPIO 22</text>
+                    <circle class="pin" cx="120" cy="70" r="4"/>
+                    <text class="gpio-label" x="55" y="75">(SCL - LCD)</text>
+                </g>
+                
+                <!-- Chip illustration -->
+                <rect x="100" y="250" width="100" height="80" fill="#111" stroke="#333" stroke-width="2" rx="5"/>
+                <text x="150" y="295" text-anchor="middle" fill="#444" style="font-size:10px;">ESP32-WROOM</text>
+            </g>
+            
+            <!-- ==================== LCD 16x2 I2C DISPLAY ==================== -->
+            <g transform="translate(850, 450)">
+                <rect class="display-box" x="0" y="0" width="180" height="200" rx="10"/>
+                <text class="component-title" x="90" y="25" text-anchor="middle">LCD 16x2 I2C</text>
+                <text class="component-subtitle" x="90" y="45" text-anchor="middle">16 Columns × 2 Rows</text>
+                
+                <!-- Screen illustration -->
+                <rect x="15" y="55" width="150" height="70" fill="#003311" stroke="#00ff88" stroke-width="2" rx="3"/>
+                <text x="90" y="80" text-anchor="middle" fill="#00ff88" style="font-size:10px; font-family: monospace;">V:220.5V I:0.52A</text>
+                <text x="90" y="105" text-anchor="middle" fill="#00d4ff" style="font-size:10px; font-family: monospace;">P:114.7W E:0.287k</text>
+                
+                <!-- Pins -->
+                <g transform="translate(40, 145)">
+                    <text class="pin-label" x="0" y="0">VCC</text>
+                    <circle class="pin pin-power" cx="-10" cy="-5" r="4"/>
+                    
+                    <text class="pin-label" x="0" y="20">GND</text>
+                    <circle class="pin pin-ground" cx="-10" cy="15" r="4"/>
+                    
+                    <text class="pin-label" x="0" y="40">SDA</text>
+                    <circle class="pin" cx="-10" cy="35" r="4"/>
+                    <text class="gpio-label" x="45" y="40">(GPIO 21)</text>
+                    
+                    <text class="pin-label" x="0" y="60">SCL</text>
+                    <circle class="pin" cx="-10" cy="55" r="4"/>
+                    <text class="gpio-label" x="45" y="60">(GPIO 22)</text>
+                </g>
+            </g>
+            
+            <!-- ==================== BUZZER ==================== -->
+            <g transform="translate(850, 730)">
+                <rect class="relay-box" x="0" y="0" width="120" height="100" rx="10"/>
+                <text class="component-title" x="60" y="25" text-anchor="middle">BUZZER</text>
+                <text class="component-subtitle" x="60" y="45" text-anchor="middle">Active 5V</text>
+                
+                <!-- Buzzer illustration -->
+                <circle cx="60" cy="70" r="20" fill="#222" stroke="#ff006e" stroke-width="2"/>
+                <circle cx="60" cy="70" r="10" fill="#333" stroke="#ff006e" stroke-width="1"/>
+                <text x="60" y="74" text-anchor="middle" fill="#ff006e" style="font-size:10px;">🔊</text>
+                
+                <text class="pin-label" x="20" y="95">(+)</text>
+                <text class="pin-label" x="85" y="95">(-)</text>
+            </g>
+            
+            <!-- ==================== WIRING ==================== -->
+            
+            <!-- 5V from HLK-PM01 to ESP32 -->
+            <path class="wire-power" d="M 165 280 L 200 280 L 200 420 L 735 420 L 735 515"/>
+            
+            <!-- 3.3V to ZMPT101B -->
+            <path class="wire-power" d="M 440 515 L 420 515 L 420 430 L 230 430 L 230 115 L 260 115"/>
+            
+            <!-- GND connections -->
+            <path class="wire-ground" d="M 440 540 L 400 540 L 400 440 L 220 440 L 220 135 L 260 135"/>
+            
+            <!-- 5V to ACS712 -->
+            <path class="wire-power" d="M 440 515 L 410 515 L 410 450 L 240 450 L 240 280 L 260 280"/>
+            
+            <!-- GND to ACS712 -->
+            <path class="wire-ground" d="M 440 540 L 390 540 L 390 460 L 235 460 L 235 300 L 260 300"/>
+            
+            <!-- 5V to Relay -->
+            <path class="wire-power" d="M 440 515 L 415 515 L 415 265 L 510 265"/>
+            
+            <!-- GND to Relay -->
+            <path class="wire-ground" d="M 440 540 L 395 540 L 395 285 L 510 285"/>
+            
+            <!-- Signal: ZMPT101B OUT to GPIO 34 -->
+            <path class="wire-signal glow-cyan" d="M 260 155 L 240 155 L 240 470 L 380 470 L 380 560 L 440 560"/>
+            
+            <!-- Signal: ACS712 OUT to GPIO 35 -->
+            <path class="wire-signal glow-cyan" d="M 260 320 L 235 320 L 235 475 L 370 475 L 370 585 L 440 585"/>
+            
+            <!-- Signal: GPIO 26 to Relay IN -->
+            <path class="wire-signal" d="M 440 610 L 360 610 L 360 400 L 480 400 L 480 305 L 510 305"/>
+            
+            <!-- Signal: GPIO 27 to Buzzer -->
+            <path class="wire-signal" d="M 440 635 L 350 635 L 350 780 L 850 780"/>
+            
+            <!-- GND to Buzzer -->
+            <path class="wire-ground" d="M 440 540 L 380 540 L 380 790 L 970 790 L 970 830"/>
+            
+            <!-- I2C connections to LCD 16x2 -->
+            <!-- GPIO 21 (SDA) to LCD SDA -->
+            <path class="wire-spi glow-green" d="M 735 585 L 790 585 L 790 520 L 840 520"/>
+            
+            <!-- GPIO 22 (SCL) to LCD SCL -->
+            <path class="wire-spi glow-green" d="M 735 610 L 800 610 L 800 535 L 840 535"/>
+            
+            <!-- 3.3V to LCD VCC -->
+            <path class="wire-power" d="M 735 515 L 760 515 L 760 500 L 820 500 L 820 485 L 840 485"/>
+            
+            <!-- GND to LCD GND -->
+            <path class="wire-ground" d="M 735 540 L 770 540 L 770 510 L 810 510 L 810 500 L 840 500"/>
+            
+            <!-- Labels for wires -->
+            <g class="wire-labels">
+                <text x="195" y="555" fill="#ff4444" style="font-size:10px;">5V</text>
+                <text x="195" y="580" fill="#666" style="font-size:10px;">GND</text>
+            </g>
+        </svg>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff4444;"></div>
+            <span class="legend-text">Power (5V / 3.3V)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #444;"></div>
+            <span class="legend-text">Ground (GND)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00d4ff;"></div>
+            <span class="legend-text">Signal (GPIO)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ff88;"></div>
+            <span class="legend-text">I2C (LCD Display)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ffaa00;"></div>
+            <span class="legend-text">AC Mains (220V)</span>
+        </div>
+    </div>
+    
+    <div class="connection-table">
+        <div class="table-header">
+            <h3>📋 Complete Pin Connection Reference</h3>
+        </div>
+        <div class="table-grid">
+            <div class="table-section">
+                <h4>🔌 ESP32 ADC Inputs</h4>
+                <div class="pin-row">
+                    <span class="pin-name">GPIO 34</span>
+                    <span class="pin-connection">← ZMPT101B OUT</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">GPIO 35</span>
+                    <span class="pin-connection">← ACS712 OUT</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>🎮 ESP32 Digital Outputs</h4>
+                <div class="pin-row">
+                    <span class="pin-name">GPIO 26</span>
+                    <span class="pin-connection">→ Relay IN</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">GPIO 27</span>
+                    <span class="pin-connection">→ Buzzer (+)</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>📺 LCD 16x2 I2C</h4>
+                <div class="pin-row">
+                    <span class="pin-name">VCC</span>
+                    <span class="pin-connection">← ESP32 3.3V/5V</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">GND</span>
+                    <span class="pin-connection">← ESP32 GND</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">SDA</span>
+                    <span class="pin-connection">← ESP32 GPIO 21</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">SCL</span>
+                    <span class="pin-connection">← ESP32 GPIO 22</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">I2C Address</span>
+                    <span class="pin-connection">0x27 or 0x3F</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>⚡ Power Connections</h4>
+                <div class="pin-row">
+                    <span class="pin-name">ESP32 3.3V</span>
+                    <span class="pin-connection">→ ZMPT101B, LCD VCC</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">ESP32 5V/VIN</span>
+                    <span class="pin-connection">→ ACS712, Relay VCC</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">ESP32 GND</span>
+                    <span class="pin-connection">→ All component GNDs</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">HLK-PM01 +5V</span>
+                    <span class="pin-connection">→ ESP32 VIN</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>🔌 ZMPT101B (Voltage)</h4>
+                <div class="pin-row">
+                    <span class="pin-name">VCC</span>
+                    <span class="pin-connection">← ESP32 3.3V</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">GND</span>
+                    <span class="pin-connection">← ESP32 GND</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">OUT</span>
+                    <span class="pin-connection">→ ESP32 GPIO 34</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">L, N</span>
+                    <span class="pin-connection">← AC Mains</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>⚡ ACS712 (Current)</h4>
+                <div class="pin-row">
+                    <span class="pin-name">VCC</span>
+                    <span class="pin-connection">← ESP32 5V</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">GND</span>
+                    <span class="pin-connection">← ESP32 GND</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">OUT</span>
+                    <span class="pin-connection">→ ESP32 GPIO 35</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">IP+</span>
+                    <span class="pin-connection">← AC Line (from source)</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">IP-</span>
+                    <span class="pin-connection">→ Relay COM</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>🔘 Relay Module</h4>
+                <div class="pin-row">
+                    <span class="pin-name">VCC</span>
+                    <span class="pin-connection">← ESP32 5V</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">GND</span>
+                    <span class="pin-connection">← ESP32 GND</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">IN</span>
+                    <span class="pin-connection">← ESP32 GPIO 26</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">COM</span>
+                    <span class="pin-connection">← ACS712 IP-</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">NO</span>
+                    <span class="pin-connection">(Not used)</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">NC ⭐</span>
+                    <span class="pin-connection">→ Bulb (Load) - Active</span>
+                </div>
+            </div>
+            
+            <div class="table-section">
+                <h4>🔊 Buzzer</h4>
+                <div class="pin-row">
+                    <span class="pin-name">(+) Positive</span>
+                    <span class="pin-connection">← ESP32 GPIO 27</span>
+                </div>
+                <div class="pin-row">
+                    <span class="pin-name">(-) Negative</span>
+                    <span class="pin-connection">← ESP32 GND</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Important Notes -->
+    <div style="margin: 0 40px 40px; background: rgba(147,51,234,0.1); border: 2px solid rgba(147,51,234,0.3); border-radius: 15px; padding: 25px;">
+        <h3 style="color: #9333ea; margin-bottom: 15px;">📌 Important Configuration Notes</h3>
+        <ul style="list-style: none; padding: 0; color: #aaa; line-height: 1.8;">
+            <li style="margin: 10px 0;">
+                <strong style="color: #ff006e;">⚠️ NC Relay Connection:</strong> This circuit uses the <strong>NC (Normally Closed)</strong> terminal of the relay. 
+                When relay is <strong>OFF</strong> (GPIO LOW), load is <strong>ON</strong>. When relay is <strong>ON</strong> (GPIO HIGH), load is <strong>OFF</strong>.
+            </li>
+            <li style="margin: 10px 0;">
+                <strong style="color: #00d4ff;">🔌 ACS712-30A Sensor:</strong> Using 30A model with 66mV/A sensitivity. 
+                For better accuracy with small loads (<100W), consider using ACS712-5A (185mV/A).
+            </li>
+            <li style="margin: 10px 0;">
+                <strong style="color: #00ff88;">📟 LCD I2C Address:</strong> Most LCD modules use 0x27, but some use 0x3F. 
+                Check your module or use I2C scanner if display doesn't work.
+            </li>
+            <li style="margin: 10px 0;">
+                <strong style="color: #ffaa00;">⚡ Current Flow:</strong> AC Line → ACS712 IP+ → IP- → Relay COM → NC → Load → Neutral
+            </li>
+        </ul>
+    </div>
+    
+    <div style="text-align: center; padding: 30px; color: #666;">
+        <p>⚠️ <strong>Safety Warning:</strong> AC Mains (220V/230V) is dangerous. Take proper precautions when working with high voltage.</p>
+        <p style="margin-top: 10px;">ESP32 Prepaid Energy Meter - Circuit Diagram © 2025</p>
+    </div>
+</body>
+</html>
