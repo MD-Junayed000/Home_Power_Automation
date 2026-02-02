@@ -26,10 +26,6 @@
         // Make available if other scripts want it later
         window.firebaseApp = app;
 
-        // Backend endpoints
-        // API/WS endpoints: hardcoded to Render backend to avoid missing env injection on static hosting.
-        const API_BASE = 'https://home-power-automation.onrender.com';
-        const WS_BASE  = 'wss://home-power-automation.onrender.com';
     </script>
     <style>
         /* Modern Professional Color Palette */
@@ -1099,6 +1095,10 @@
     </div>
 
     <script>
+        // Backend endpoints (hardcoded to Render; override by setting window.API_BASE / window.WS_BASE before this script)
+        const API_BASE = window.API_BASE || 'https://home-power-automation.onrender.com';
+        const WS_BASE  = window.WS_BASE  || 'wss://home-power-automation.onrender.com';
+
         let relayState = false;
         let wsConnection = null;
         let isOnline = false;
