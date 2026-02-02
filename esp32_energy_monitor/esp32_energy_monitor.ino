@@ -53,8 +53,8 @@
  #define LCD_SCL 22          // I2C SCL for LCD
  
  // ============== WIFI CREDENTIALS ==============
- const char* ssid = "John Player";
- const char* password = "10111213";
+ const char* ssid = "ITBI";
+ const char* password = "WF$it880";
  
  // ============== HIVEMQ CLOUD SETTINGS ==============
  // You'll get these from HiveMQ Cloud console

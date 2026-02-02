@@ -25,6 +25,11 @@
             .catch(() => {}); // analytics is optional; ignore if unsupported
         // Make available if other scripts want it later
         window.firebaseApp = app;
+
+        // Backend endpoints
+        // API/WS endpoints: pick in order — window.API_BASE (if injected), localStorage override, or same origin.
+        const API_BASE = (window.API_BASE || localStorage.getItem('API_BASE') || window.location.origin).replace(/\/+$/, '');
+        const WS_BASE  = API_BASE.replace(/^http/, 'ws');
     </script>
     <style>
         /* Modern Professional Color Palette */
@@ -1100,8 +1105,7 @@
 
         // Initialize WebSocket connection for real-time updates
         function initWebSocket() {
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProtocol}//${window.location.host}`;
+            const wsUrl = `${WS_BASE}`;
             
             try {
                 wsConnection = new WebSocket(wsUrl);
@@ -1191,7 +1195,7 @@
             
             // Load settings data when settings page is opened
             if (page === 'settings') {
-                fetch('/api/data')
+                fetch(`${API_BASE}/api/data`)
                     .then(response => response.json())
                     .then(data => {
                         updateSettingsFields(data);
@@ -1212,7 +1216,7 @@
         }
 
         function updateValues() {
-            fetch('/api/data')
+            fetch(`${API_BASE}/api/data`)
                 .then(response => response.json())
                 .then(data => {
                     updateDashboardValues(data);
@@ -1346,7 +1350,7 @@
 
             let overrideState = (state === 0) ? 1 : 0;
 
-            fetch(`/api/setRelay?state=${state}&override=${overrideState}`, { method: 'POST' })
+            fetch(`${API_BASE}/api/setRelay?state=${state}&override=${overrideState}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1379,7 +1383,7 @@
             rechargeButton.disabled = true;
             showAlert('Processing recharge...', 'warning', 'recharge-alert');
 
-            fetch(`/api/recharge?amount=${amount}`, { method: 'POST' })
+            fetch(`${API_BASE}/api/recharge?amount=${amount}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1405,7 +1409,7 @@
             rechargeButton.disabled = true;
             showAlert('Processing recharge...', 'warning', 'power-control-alert');
 
-            fetch(`/api/recharge?amount=${amount}`, { method: 'POST' })
+            fetch(`${API_BASE}/api/recharge?amount=${amount}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1448,7 +1452,7 @@
             saveButton.disabled = true;
             showAlert('Saving settings...', 'warning', 'threshold-alert');
 
-            fetch('/setThresholds', {
+            fetch(`${API_BASE}/api/setThresholds`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1481,7 +1485,7 @@
             resetButton.disabled = true;
             showAlert('Performing factory reset...', 'warning', 'factory-reset-alert');
 
-            fetch('/factoryReset', { method: 'POST' })
+            fetch(`${API_BASE}/api/factoryReset`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1601,8 +1605,8 @@
             
             // Fetch real data from MongoDB via API
             Promise.all([
-                fetch('/api/data').then(r => r.json()),
-                fetch(`/api/reports?range=${range}`).then(r => r.json())
+                fetch(`${API_BASE}/api/data`).then(r => r.json()),
+                fetch(`${API_BASE}/api/reports?range=${range}`).then(r => r.json())
             ])
             .then(([liveData, reportData]) => {
                 const costPerKWh = liveData.costPerKWh || 8.0;
@@ -1767,8 +1771,8 @@
         function exportData(format) {
             const range = document.getElementById('report-range').value;
             
-            // Fetch real data from MongoDB
-            fetch(`/api/reports?range=${range}`)
+            // Fetch real data from backend
+            fetch(`${API_BASE}/api/reports?range=${range}`)
                 .then(r => r.json())
                 .then(reportData => {
                     if (!reportData.success || !reportData.data || reportData.data.length === 0) {
