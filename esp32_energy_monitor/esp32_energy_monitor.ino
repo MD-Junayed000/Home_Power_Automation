@@ -78,7 +78,7 @@
 // Default values below - will be loaded from EEPROM if available
 
 float voltageFactor = 500.0;        // ZMPT101B calibration factor
-float currentSensitivity = 0.013;   // ACS712 sensitivity (V/A); tuned for small-load accuracy (40W @ 220V ≈ 0.18A)
+float currentSensitivity = 0.075;   // ACS712 sensitivity (V/A); tuned for small-load accuracy (40W @ 220V ≈ 0.18A)
 float currentOffset = 0.20;         // Phantom current offset (auto-calibrated at startup)
 
 // Moving Average Filter (for stable readings - industry practice)

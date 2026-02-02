@@ -403,20 +403,7 @@
                 <circle class="pin" cx="120" cy="80" r="6"/>
             </g>
             
-            <!-- ==================== HI-LINK CONVERTER ==================== -->
-            <g transform="translate(50, 180)">
-                <rect class="power-box" x="0" y="0" width="140" height="100" rx="10"/>
-                <text class="component-title" x="70" y="25" text-anchor="middle">HLK-PM01</text>
-                <text class="component-subtitle" x="70" y="45" text-anchor="middle">AC-DC Converter</text>
-                <text class="component-subtitle" x="70" y="60" text-anchor="middle">220V → 5V DC</text>
-                <text class="pin-label" x="15" y="85">AC</text>
-                <text class="pin-label" x="95" y="85">+5V</text>
-                <circle class="pin" cx="25" cy="100" r="6"/>
-                <circle class="pin pin-power" cx="115" cy="100" r="6"/>
-            </g>
-            
-            <!-- Wire from AC to Converter -->
-            <path class="wire-ac" d="M 70 130 L 70 150 L 75 180"/>
+            <!-- AC-DC converter removed -->
             <path class="wire-ac" d="M 170 130 L 170 150 L 75 150 L 75 180"/>
             
             <!-- ==================== ZMPT101B Voltage Sensor ==================== -->
@@ -625,8 +612,7 @@
             
             <!-- ==================== WIRING ==================== -->
             
-            <!-- 5V from HLK-PM01 to ESP32 -->
-            <path class="wire-power" d="M 165 280 L 200 280 L 200 420 L 735 420 L 735 515"/>
+            <!-- 5V feed to ESP32 removed with converter -->
             
             <!-- 3.3V to ZMPT101B -->
             <path class="wire-power" d="M 440 515 L 420 515 L 420 430 L 230 430 L 230 115 L 260 115"/>
@@ -773,8 +759,7 @@
                     <span class="pin-connection">→ All component GNDs</span>
                 </div>
                 <div class="pin-row">
-                    <span class="pin-name">HLK-PM01 +5V</span>
-                    <span class="pin-connection">→ ESP32 VIN</span>
+                    <!-- AC-DC converter removed -->
                 </div>
             </div>
             
