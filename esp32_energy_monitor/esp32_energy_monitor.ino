@@ -78,7 +78,7 @@
 // Default values below - will be loaded from EEPROM if available
 
 float voltageFactor = 500.0;        // ZMPT101B calibration factor
-float currentSensitivity = 0.066;   // ACS712 sensitivity (V/A) - 30A: 0.066, 20A: 0.100, 5A: 0.185
+float currentSensitivity = 0.013;   // ACS712 sensitivity (V/A); tuned for small-load accuracy (40W @ 220V ≈ 0.18A)
 float currentOffset = 0.20;         // Phantom current offset (auto-calibrated at startup)
 
 // Moving Average Filter (for stable readings - industry practice)
@@ -673,11 +673,18 @@ void loadCalibration() {
       voltageFactor = savedVoltageFactor;
     }
     
-    // Load current sensitivity if saved
-    float savedSensitivity = EEPROM.readFloat(ADDR_CURRENT_SENSITIVITY);
-    if (!isnan(savedSensitivity) && savedSensitivity > 0.01 && savedSensitivity < 1.0) {
+  // Load current sensitivity if saved
+  float savedSensitivity = EEPROM.readFloat(ADDR_CURRENT_SENSITIVITY);
+  if (!isnan(savedSensitivity) && savedSensitivity > 0.01 && savedSensitivity < 1.0) {
+    // Migrate old default (0.066) to improved small-load value (0.013)
+    if (savedSensitivity > 0.05 && savedSensitivity < 0.08) {
+      currentSensitivity = 0.013;
+      EEPROM.writeFloat(ADDR_CURRENT_SENSITIVITY, currentSensitivity);
+      EEPROM.commit();
+    } else {
       currentSensitivity = savedSensitivity;
     }
+  }
     
     isCalibrated = true;
     Serial.println("Calibration loaded from EEPROM:");

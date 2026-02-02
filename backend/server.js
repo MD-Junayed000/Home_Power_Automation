@@ -12,11 +12,11 @@
 
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
 const mqtt = require('mqtt');
 const WebSocket = require('ws');
 const path = require('path');
 const dotenv = require('dotenv');
+const admin = require('firebase-admin');
 
 // Load environment variables
 dotenv.config({ path: './config.env' });
@@ -34,9 +34,6 @@ const config = {
       relay: 'energy/relay'
     }
   },
-  mongodb: {
-    uri: process.env.MONGO_URI || 'mongodb://localhost:27017/energydb'
-  },
   server: {
     port: process.env.PORT || 3000
   }
@@ -48,43 +45,32 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../static')));
 
-// ============== MongoDB Schemas ==============
-const ReadingSchema = new mongoose.Schema({
-  timestamp: { type: Date, default: Date.now },
-  voltage: Number,
-  current: Number,
-  power: Number,
-  energy: Number,
-  balance: Number,
-  relayState: Boolean,
-  faultDetected: Boolean,
-  faultReason: String,
-  rssi: Number
+// ============== Firebase Admin (Firestore) ==============
+let serviceAccount;
+if (process.env.FIREBASE_PROJECT_ID) {
+  serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n')
+  };
+} else {
+  try {
+    serviceAccount = require('./firebaseServiceAccountKey.json');
+  } catch (err) {
+    console.error('❌ Missing firebaseServiceAccountKey.json and FIREBASE_* env vars');
+    process.exit(1);
+  }
+}
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
 });
 
-const StatusLogSchema = new mongoose.Schema({
-  timestamp: { type: Date, default: Date.now },
-  status: String,
-  faultReason: String,
-  relayState: Boolean,
-  voltage: Number,
-  current: Number,
-  balance: Number
-});
-
-const SettingsSchema = new mongoose.Schema({
-  overVoltageThreshold: { type: Number, default: 260.0 },
-  underVoltageThreshold: { type: Number, default: 160.0 },
-  overCurrentThreshold: { type: Number, default: 10.0 },
-  costPerKWh: { type: Number, default: 8.0 },
-  minimumBalance: { type: Number, default: 0 },
-  updatedAt: { type: Date, default: Date.now }
-});
-
-// Create Models
-const Reading = mongoose.model('Reading', ReadingSchema);
-const StatusLog = mongoose.model('StatusLog', StatusLogSchema);
-const Settings = mongoose.model('Settings', SettingsSchema);
+const db = admin.firestore();
+const readingsCol = db.collection('readings');
+const statusCol = db.collection('statusLogs');
+const settingsDoc = db.collection('settings').doc('global');
+let firestoreHealthy = true;
 
 // ============== Global State ==============
 let latestReading = {
@@ -110,31 +96,31 @@ let latestReading = {
 let mqttClient = null;
 let wsClients = [];
 
-// ============== MongoDB Connection ==============
-async function connectMongoDB() {
+// ============== Firestore Helpers ==============
+async function loadSettings() {
   try {
-    await mongoose.connect(config.mongodb.uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log('✅ Connected to MongoDB');
-    
-    // Load or create default settings
-    let settings = await Settings.findOne();
-    if (!settings) {
-      settings = await Settings.create({});
-      console.log('📝 Created default settings');
+    const snap = await settingsDoc.get();
+    if (snap.exists) {
+      const data = snap.data();
+      latestReading.overVoltageThreshold = data.overVoltageThreshold ?? latestReading.overVoltageThreshold;
+      latestReading.underVoltageThreshold = data.underVoltageThreshold ?? latestReading.underVoltageThreshold;
+      latestReading.overCurrentThreshold = data.overCurrentThreshold ?? latestReading.overCurrentThreshold;
+      latestReading.costPerKWh = data.costPerKWh ?? latestReading.costPerKWh;
+    } else {
+      await settingsDoc.set({
+        overVoltageThreshold: latestReading.overVoltageThreshold,
+        underVoltageThreshold: latestReading.underVoltageThreshold,
+        overCurrentThreshold: latestReading.overCurrentThreshold,
+        costPerKWh: latestReading.costPerKWh,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('📝 Created default settings in Firestore');
     }
-    
-    // Update latestReading with saved settings
-    latestReading.overVoltageThreshold = settings.overVoltageThreshold;
-    latestReading.underVoltageThreshold = settings.underVoltageThreshold;
-    latestReading.overCurrentThreshold = settings.overCurrentThreshold;
-    latestReading.costPerKWh = settings.costPerKWh;
-    
+    firestoreHealthy = true;
+    console.log('✅ Connected to Firestore');
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error.message);
-    console.log('⚠️  Running without database - data will not be persisted');
+    firestoreHealthy = false;
+    console.error('❌ Firestore error:', error.message);
   }
 }
 
@@ -223,20 +209,21 @@ async function handleDataMessage(data) {
   
   // Save to MongoDB (with rate limiting)
   try {
-    if (mongoose.connection.readyState === 1) {
-      await Reading.create({
-        voltage: data.voltage,
-        current: data.current,
-        power: data.power,
-        energy: data.energy,
-        balance: data.balance,
-        relayState: data.relayState,
-        faultDetected: data.faultDetected,
-        faultReason: data.faultReason,
-        rssi: data.rssi
-      });
-    }
+    await readingsCol.add({
+      timestamp: admin.firestore.Timestamp.now(),
+      voltage: data.voltage,
+      current: data.current,
+      power: data.power,
+      energy: data.energy,
+      balance: data.balance,
+      relayState: data.relayState,
+      faultDetected: data.faultDetected,
+      faultReason: data.faultReason,
+      rssi: data.rssi
+    });
+    firestoreHealthy = true;
   } catch (error) {
+    firestoreHealthy = false;
     console.error('Error saving reading:', error.message);
   }
 }
@@ -246,17 +233,18 @@ async function handleStatusMessage(data) {
   
   // Log status changes
   try {
-    if (mongoose.connection.readyState === 1) {
-      await StatusLog.create({
-        status: data.status,
-        faultReason: data.faultReason,
-        relayState: data.relayState,
-        voltage: data.voltage,
-        current: data.current,
-        balance: data.balance
-      });
-    }
+    await statusCol.add({
+      timestamp: admin.firestore.Timestamp.now(),
+      status: data.status,
+      faultReason: data.faultReason,
+      relayState: data.relayState,
+      voltage: data.voltage,
+      current: data.current,
+      balance: data.balance
+    });
+    firestoreHealthy = true;
   } catch (error) {
+    firestoreHealthy = false;
     console.error('Error saving status:', error.message);
   }
 }
@@ -387,22 +375,21 @@ app.post('/api/setThresholds', async (req, res) => {
       latestReading.overCurrentThreshold = parseFloat(overCurrent);
       latestReading.costPerKWh = parseFloat(costPerKWh);
       
-      // Save to MongoDB
-      if (mongoose.connection.readyState === 1) {
-        await Settings.findOneAndUpdate({}, {
-          overVoltageThreshold: parseFloat(overVoltage),
-          overCurrentThreshold: parseFloat(overCurrent),
-          costPerKWh: parseFloat(costPerKWh),
-          updatedAt: new Date()
-        }, { upsert: true });
-      }
-      
+      await settingsDoc.set({
+        overVoltageThreshold: parseFloat(overVoltage),
+        overCurrentThreshold: parseFloat(overCurrent),
+        costPerKWh: parseFloat(costPerKWh),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      firestoreHealthy = true;
+
       console.log(`📤 Updated thresholds`);
       res.json({ success: true });
     } else {
       res.status(503).json({ success: false, message: 'MQTT not connected' });
     }
   } catch (error) {
+    firestoreHealthy = false;
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -443,13 +430,17 @@ app.get('/api/history', async (req, res) => {
     const hours = parseInt(req.query.hours) || 24;
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     
-    if (mongoose.connection.readyState !== 1) {
-      return res.json([]);
-    }
+    const snapshot = await readingsCol
+      .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(since))
+      .orderBy('timestamp', 'asc')
+      .limit(1000)
+      .get();
     
-    const readings = await Reading.find({
-      timestamp: { $gte: since }
-    }).sort({ timestamp: 1 }).limit(1000);
+    const readings = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().timestamp.toDate()
+    }));
     
     res.json(readings);
   } catch (error) {
@@ -461,15 +452,7 @@ app.get('/api/history', async (req, res) => {
 app.get('/api/reports', async (req, res) => {
   try {
     const range = req.query.range || 'day';
-    
-    if (mongoose.connection.readyState !== 1) {
-      return res.json({ 
-        success: false, 
-        error: 'Database not connected',
-        data: [] 
-      });
-    }
-    
+
     let hours, groupBy, minutes;
     switch (range) {
       case '10min':
@@ -500,10 +483,18 @@ app.get('/api/reports', async (req, res) => {
     
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     
-    // Get all readings in the time range
-    const readings = await Reading.find({
-      timestamp: { $gte: since }
-    }).sort({ timestamp: 1 });
+    const snapshot = await readingsCol
+      .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(since))
+      .orderBy('timestamp', 'asc')
+      .get();
+    
+    const readings = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        timestamp: data.timestamp.toDate()
+      };
+    });
     
     if (readings.length === 0) {
       return res.json({
@@ -615,7 +606,7 @@ app.get('/api/status', (req, res) => {
     isOnline: latestReading.isOnline,
     lastUpdate: latestReading.lastUpdate,
     mqttConnected: mqttClient ? mqttClient.connected : false,
-    mongoConnected: mongoose.connection.readyState === 1
+    firestoreHealthy
   });
 });
 
@@ -640,8 +631,8 @@ app.post('/factoryReset', (req, res) => res.redirect(307, '/api/factoryReset'));
 
 // ============== Start Server ==============
 async function startServer() {
-  // Connect to MongoDB
-  await connectMongoDB();
+  // Load settings from Firestore
+  await loadSettings();
   
   // Connect to MQTT
   connectMQTT();
@@ -669,10 +660,6 @@ process.on('SIGINT', async () => {
   
   if (mqttClient) {
     mqttClient.end();
-  }
-  
-  if (mongoose.connection.readyState === 1) {
-    await mongoose.connection.close();
   }
   
   process.exit(0);

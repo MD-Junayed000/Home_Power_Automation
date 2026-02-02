@@ -1,7 +1,7 @@
 {
   "name": "esp32-energy-meter-backend",
   "version": "1.0.0",
-  "description": "Backend server for ESP32 Energy Meter with MQTT and MongoDB",
+  "description": "Backend server for ESP32 Energy Meter with MQTT and Firestore",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,7 +12,7 @@
     "esp32",
     "energy-meter",
     "mqtt",
-    "mongodb",
+    "firestore",
     "hivemq"
   ],
   "author": "",
@@ -21,7 +21,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "mongoose": "^8.0.3",
+    "firebase-admin": "^12.0.0",
     "mqtt": "^5.3.4",
     "ws": "^8.16.0"
   },

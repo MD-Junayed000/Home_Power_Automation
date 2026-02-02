@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prepaid Energy Monitor Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBApIXYQW1pTizkmFbTL-XZ-UxStzxIgn4",
+            authDomain: "home-power-automation.firebaseapp.com",
+            projectId: "home-power-automation",
+            storageBucket: "home-power-automation.firebasestorage.app",
+            messagingSenderId: "933360563521",
+            appId: "1:933360563521:web:31efc30d2470bbc35b9dc0",
+            measurementId: "G-HKCXE5BD7D"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        isSupported()
+            .then((ok) => ok && getAnalytics(app))
+            .catch(() => {}); // analytics is optional; ignore if unsupported
+        // Make available if other scripts want it later
+        window.firebaseApp = app;
+    </script>
     <style>
         /* Modern Professional Color Palette */
         :root {
@@ -58,6 +79,7 @@
             width: 240px;
             z-index: 100;
             box-shadow: var(--box-shadow);
+            transition: transform 0.3s ease;
         }
 
         .brand {
@@ -111,6 +133,45 @@
             margin-right: 10px;
             width: 20px;
             text-align: center;
+        }
+
+        /* Mobile top bar */
+        .mobile-topbar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: white;
+            box-shadow: var(--box-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 110;
+        }
+
+        .menu-btn {
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .mobile-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 90;
         }
 
         /* Main Content */
@@ -461,14 +522,62 @@
 
         /* Responsive */
         @media (max-width: 992px) {
+            .mobile-topbar {
+                display: flex;
+            }
             .dashboard-container {
                 grid-template-columns: 1fr;
             }
             .sidebar {
-                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 240px;
+                padding-top: 20px;
+                transform: translateX(-100%);
+                box-shadow: 12px 0 24px rgba(0,0,0,0.18);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-backdrop.active {
+                display: block;
+            }
+            .brand {
+                padding: 0;
+                margin: 0;
+                border: none;
+            }
+            .nav-menu {
+                padding: 20px 0 0 0;
+            }
+            .nav-item {
+                margin: 0;
+                padding: 0 15px 8px 15px;
+            }
+            .nav-link {
+                margin-right: 0;
+                white-space: normal;
             }
             .main-content {
                 grid-column: 1;
+                padding: 15px;
+            }
+            .card-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            .settings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            .settings-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -489,6 +598,8 @@
         @media (max-width: 992px) {
             .simulation-banner {
                 left: 0;
+                right: 0;
+                position: relative;
             }
         }
 
@@ -498,9 +609,19 @@
     </style>
 </head>
 <body>
+    <div class="mobile-topbar">
+        <button class="menu-btn" aria-label="Open menu" onclick="toggleSidebar(true)">☰</button>
+        <div class="mobile-brand">
+            <span style="font-size:18px;">⚡</span>
+            <span>Arocharge</span>
+        </div>
+        <div id="mobile-update" style="font-size:12px;color:var(--gray-600);">--</div>
+    </div>
     <div class="simulation-banner" id="connection-banner">
         ⚡ Connecting to ESP32 Energy Meter...
     </div>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
 
     <div class="dashboard-container">
         <!-- Sidebar Navigation -->
@@ -1010,8 +1131,11 @@
                             updateControlSection(data);
                             
                             const now = new Date();
-                            document.getElementById('update-timestamp').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+                            const ts = `Last updated: ${now.toLocaleTimeString()}`;
+                            document.getElementById('update-timestamp').textContent = ts;
                             document.getElementById('update-status').textContent = `Last Update: ${now.toLocaleTimeString()}`;
+                            const mobileTs = document.getElementById('mobile-update');
+                            if (mobileTs) mobileTs.textContent = ts;
                         }
                     } catch (e) {
                         console.error('WebSocket message error:', e);
@@ -1098,8 +1222,11 @@
                     updateControlSection(data);
 
                     const now = new Date();
-                    document.getElementById('update-timestamp').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+                    const ts = `Last updated: ${now.toLocaleTimeString()}`;
+                    document.getElementById('update-timestamp').textContent = ts;
                     document.getElementById('update-status').textContent = `Last Update: ${now.toLocaleTimeString()}`;
+                    const mobileTs = document.getElementById('mobile-update');
+                    if (mobileTs) mobileTs.textContent = ts;
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
@@ -1712,6 +1839,30 @@
             updateReports();
         }
 
+        function toggleSidebar(open) {
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (!sidebar || !backdrop) return;
+            if (open) {
+                sidebar.classList.add('open');
+                backdrop.classList.add('active');
+            } else {
+                sidebar.classList.remove('open');
+                backdrop.classList.remove('active');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 992) toggleSidebar(false);
+                });
+            });
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 992) toggleSidebar(false);
+            });
+        });
+
         // Initial update and set interval
         updateValues();
         setInterval(updateValues, 3000);
@@ -1724,4 +1875,3 @@
     </script>
 </body>
 </html>
-
