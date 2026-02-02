@@ -78,7 +78,7 @@
 // Default values below - will be loaded from EEPROM if available
 
 float voltageFactor = 500.0;        // ZMPT101B calibration factor
-float currentSensitivity = 0.075;   // ACS712 sensitivity (V/A); tuned for small-load accuracy (40W @ 220V ≈ 0.18A)
+float currentSensitivity = 0.066;   // ACS712 30A module sensitivity (V/A). Update via MQTT if using 5A/20A variant.
 float currentOffset = 0.20;         // Phantom current offset (auto-calibrated at startup)
 
 // Moving Average Filter (for stable readings - industry practice)
@@ -197,9 +197,16 @@ float costPerKWh = 8.0;               // Cost per kWh in Taka
    // Initialize EEPROM
    EEPROM.begin(EEPROM_SIZE);
    
-  // Setup pins
-  pinMode(RELAY_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+ // Setup pins
+ pinMode(RELAY_PIN, OUTPUT);
+ pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  // Configure ADC for sensor range (ACS712 & ZMPT output swing ≈ 0–3.3V).
+  // Default ESP32 attenuation (0 dB) clips everything above ~1.1V, which makes
+  // the current reading stick at ~0 A. Set 11 dB so full 3.3V is measurable.
+  analogReadResolution(12);
+  analogSetPinAttenuation(CURRENT_PIN, ADC_11db);
+  analogSetPinAttenuation(VOLTAGE_PIN, ADC_11db);
   
   // IMPORTANT: Relay is Normally Closed (NC)
   // HIGH = relay de-energized = NC contacts closed = load OFF
@@ -675,15 +682,8 @@ void loadCalibration() {
     
   // Load current sensitivity if saved
   float savedSensitivity = EEPROM.readFloat(ADDR_CURRENT_SENSITIVITY);
-  if (!isnan(savedSensitivity) && savedSensitivity > 0.01 && savedSensitivity < 1.0) {
-    // Migrate old default (0.066) to improved small-load value (0.013)
-    if (savedSensitivity > 0.05 && savedSensitivity < 0.08) {
-      currentSensitivity = 0.013;
-      EEPROM.writeFloat(ADDR_CURRENT_SENSITIVITY, currentSensitivity);
-      EEPROM.commit();
-    } else {
-      currentSensitivity = savedSensitivity;
-    }
+  if (!isnan(savedSensitivity) && savedSensitivity > 0.04 && savedSensitivity < 0.25) {
+    currentSensitivity = savedSensitivity; // honour stored value for the module in use
   }
     
     isCalibrated = true;
